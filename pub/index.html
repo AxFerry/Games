@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link  type="text/css" rel="stylesheet" href="css/chessboard-1.0.0.css">
+    <script  src="js/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <title>Games</title>
+</head>
+<body>
+
+    <!-----      LOGIN PAGE         ----->
+   <div id="starter">
+    <h1>Games</h1>
+    <p>Scegli un username</p>
+    <input id="nametxt" type="text"width="200px">
+    <p> Scegli un gioco </p>
+  
+   <div id="btnwrap">
+    <button id="chessbtn">scacchi</button>
+    <button id="airhockey">air-hockey</button> 
+   </div> 
+   </div>
+
+
+
+    <!-----      CHESS        ----->
+    <div id="chessgame">
+        <div id="topscreen">
+            <p>    <span id="id1"></span>
+                <span> VS </span>
+                <span id="id2"></span></p>
+        
+                <p>  <span id="time1"></span>
+                    <span> / </span>
+                    <span id="time2"></span></p>
+            </div>
+            <div id="myBoard" style="width: 400px"></div>
+    </div>
+    
+</body>
+</html>
+<style>
+html{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    margin: 5px;
+    border: 1 px , solid , black;
+    border-radius: 1rem;
+
+}
+#chessgame{
+    visibility: collapse;
+}
+
+</style>
+
+<script>
+const startingtimer = 300 ;
+let wtime = startingtimer;
+let btime = startingtimer;
+let turn 
+let prole
+let uname
+let opponame
+let proomId
+let orient = 'white'
+const id1=document.getElementById("id1")
+const id2=document.getElementById("id2")
+
+
+const socket = io();
+var board = null
+let fen 
+let game = new Chess()
+
+setInterval(refTimers, 1000)
+
+
+document.addEventListener("DOMContentLoaded", function(){
+    const time1 =document.getElementById("time1")
+    const time2 =document.getElementById("time2")
+    const starter = document.getElementById("starter")
+    const chessgame = document.getElementById("chessgame")
+    const chessbtn = document.getElementById("chessbtn")
+    const airbtn = document.getElementById("airhockey")
+
+chessbtn.addEventListener("click", function(){
+    let uname = $("#nametxt").val()
+    console.log(uname)
+    if(uname == "" ){
+        alert("select a username");
+    }
+    else{
+        socket.emit('chess',  uname )
+        starter.style.visibility = "collapse";
+        chessgame.style.visibility = "visible";
+        
+
+    }
+})
+
+airbtn.addEventListener("click", function(){
+    let uname = $("#nametxt").val()
+    console.log(uname)
+    if(uname == "" ){
+        alert("select a username");
+    }
+    else{
+        socket.emit("airhockey", uname)
+        alert("work in progress ")
+        
+        
+
+    }
+})
+//// SOCKETS
+
+socket.on('wait',({role, roomId , uname })=>{
+    prole = role
+    proomId = roomId
+
+    if(role == "b"){
+        socket.emit('lastcheck', {uname , roomId})
+        orient = 'black'
+    }
+    console.log(role +"   "+roomId)
+    var config = {
+    draggable: true,
+    position: 'start',
+    onDrop: onDrop,
+    orientation : orient
+    }
+    board = Chessboard('myBoard', config)
+  
+})
+socket.on('startchess', ( temproom)=>{
+    console.log(temproom)
+    if(prole == 'w'){ 
+        turn = 'y'
+        id1.innerHTML = temproom.white
+        id2.innerHTML = temproom.black
+    }
+    else{
+        turn = 'n'
+        id1.innerHTML = temproom.black
+        id2.innerHTML = temproom.white
+    }
+})
+socket.on("winner",()=>{
+    turn = 'stop'
+    alert('ha vinto ')
+})
+socket.on("loser",()=>{
+    turn = 'stop'
+    alert('ha perso ')
+})
+
+socket.on("servmove", ( fen)=>{
+    
+    board.position(fen)
+    game.load(fen)
+    if( turn == 'y'){ turn = 'n'}
+    else{turn = 'y'}
+})
+
+})
+
+
+
+
+
+
+/// FUNCTIONS
+
+function refTimers(){
+  if(turn == 'y'){
+    if(wtime === 0){
+      socket.emit('blackwins', (player.role , rmId ))
+    }
+    else{
+      wtime --
+    time1.innerHTML= Math.floor(wtime/60) + ' : '+ wtime%60
+    time2.innerHTML=Math.floor(btime/60) + ' : '+ btime%60
+    }
+  }
+  if(turn == 'n'){
+     if( btime=== 0){
+      socket.emit('whitewins',(player.role ))
+     }
+     else{
+      btime --
+    time1.innerHTML= Math.floor(wtime/60) + ' : '+ wtime%60
+    time2.innerHTML=Math.floor(btime/60) + ' : '+ btime%60
+     }
+  }
+  else{
+    time1.innerHTML= Math.floor(wtime/60) + ' : '+ wtime%60
+    time2.innerHTML=Math.floor(btime/60) + ' : '+ btime%60
+  }
+ 
+}
+
+
+
+
+function onDrop (source, target , piece) {
+
+  setTurn(game , prole)
+  console.log(game.turn())
+ if(turn == 'y'){
+    let trymove = game.move({
+        from : source ,
+        to : target
+    })
+    console.log(trymove)
+    if(trymove !== null )
+    {
+        let fen = game.fen()
+        if(game.in_checkmate() == true ){
+            console.log("vinto")
+             socket.emit("win", (fen))}
+        else{
+            socket.emit("move",{source , target , fen ,proomId ,prole})
+        game.undo()}
+        }
+        
+ }
+ else { alert("non tocca a te ")}
+ return 'snapback'
+ 
+}
+
+function setTurn ( chess , color ){
+    var tokens = chess.fen().split(' ')
+    tokens[1] = color
+    chess.load(tokens.join(' '));
+  }
+
+</script>

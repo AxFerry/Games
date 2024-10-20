@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script  src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script  src="/socket.io/socket.io.js"></script>
+    <link  type="text/css" rel="stylesheet" href="css/chessboard-1.0.0.css">
+    <script  src="js/chessboard-1.0.0.min.js"></script>
+    <title>chess</title>
+</head>
+<body>
+
+    <div id="topscreen">
+    <p>    <span id="id1"></span>
+        <span> VS </span>
+        <span id="id2"></span></p>
+
+        <p>  <span id="time1"></span>
+            <span> / </span>
+            <span id="time2"></span></p>
+    </div>
+    <div id="myBoard" style="width: 400px"></div>
+<label>Status:</label>
+<div id="status"></div>
+<label>FEN:</label>
+<div id="fen"></div>
+<label>PGN:</label>
+<div id="pgn"></div>
+    
+</body>
+</html>
+
+
+<style>
+html{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-evenly;
+
+}</style>
+
+<script>
+let turn = 'y'
+let prole
+let uname
+let opponame
+let proomId
+const socket = io();
+var board = null
+let fen 
+var config = {
+  draggable: true,
+  position: 'start',
+  onDrop: onDrop,
+  orientation : orient
+ 
+}
+board = Chessboard('myBoard', config)
+
+document.addEventListener('DOMContentLoaded', function(){
+    socket.emit('loaded')
+})
+    
+
+
+socket.on('wait',(role, roomId , uname )=>{
+    prole = role
+    proomId = roomId
+
+    if(role = "b"){board.orientation("black")}
+    console.log(role +"   "+roomId)
+    if(role == 'b'){
+        socket.emit('lastcheck', (uname , roomId))
+    }
+
+
+})
+
+
+
+
+
+function onDrop (source, target) {
+  fen = board.fen()
+  console.log(fen)
+ if(turn == 'y'){
+    socket.emit("move",(source , target , fen ,proomId))
+ }
+ else { alert("non tocca a te ")}
+ return 'snapback'
+ 
+}
+
+
+
+
+
+  
+</script>
